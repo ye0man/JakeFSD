@@ -1,0 +1,4 @@
+# Ignore generated outputs and databases created by running examples
+**/data/*.duckdb
+**/data/*.db
+**/reports/

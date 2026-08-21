@@ -1,0 +1,26 @@
+project:
+  pipeline:
+    name: api_to_sqlite
+    stages:
+    - id: source
+      type: collect
+      connector: rest_api
+      config:
+        url: https://jsonplaceholder.typicode.com/posts
+        json_path: ""
+      depends_on: []
+    - id: load
+      type: load
+      connector: sqlite_load
+      config:
+        database: data/posts.db
+        table: posts
+      depends_on:
+      - source
+    - id: report
+      type: report
+      connector: csv_export
+      config:
+        path: reports/posts.csv
+      depends_on:
+      - load

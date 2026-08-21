@@ -1,0 +1,27 @@
+project:
+  pipeline:
+    name: sales_report
+    schedule: 0 9 * * MON
+    stages:
+    - id: source
+      type: collect
+      connector: csv_file
+      config:
+        path: data/sales.csv
+      depends_on: []
+    - id: load
+      type: load
+      connector: duckdb_load
+      config:
+        database: data/sales.duckdb
+        table: sales
+      depends_on:
+      - source
+    - id: report
+      type: report
+      connector: html_dashboard
+      config:
+        path: reports/sales_report.html
+        title: Weekly Sales Report
+      depends_on:
+      - load
