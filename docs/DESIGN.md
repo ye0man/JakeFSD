@@ -38,6 +38,25 @@ JakeFSD is an open-source, local-first desktop IDE for data pipelines. A convers
 | Default LLM providers | OpenAI, Anthropic, OpenRouter; local models supported |
 | Distribution | Open-source desktop app + CLI |
 
+## Technology Stack
+
+JakeFSD uses a split stack: a modern desktop shell for the analyst-facing UI, and a Python-native runtime for the actual data work.
+
+| Layer | Technology | Role |
+|---|---|---|
+| **Desktop application shell** | Tauri (Rust core + React/TypeScript frontend) | Fast, secure, native-feeling desktop window; hosts the chat pane, canvas, and preview views. |
+| **Frontend UI** | React + TypeScript | Chat pane, visual pipeline DAG (via React Flow), stage inspector, preview panes. |
+| **Pipeline runtime** | Python 3.11+ | Executes connectors, generated Pandas/SQL, DuckDB/SQLite storage, scheduling, and local dashboards. |
+| **CLI** | Python + Typer | First-class command-line interface for scaffolding, running, and emitting pipelines. |
+| **LLM abstraction** | Python (LiteLLM or equivalent) | Provider-agnostic calls to OpenAI, Anthropic, OpenRouter, and local models. |
+| **Cloud emission** | Python generating Terraform/HCL, dbt projects, Airflow/Dagster DAGs, PySpark/Snowflake SQL | Produces user-account artifacts for AWS, Databricks, Snowflake, BigQuery, and GCP. |
+
+### Why this split?
+
+- **Python owns the data path** because the data ecosystem — DuckDB, Pandas, dbt, SQL generation, orchestrator DAGs — is Python-first.
+- **Tauri + React owns the UI** because it delivers a modern, small-footprint desktop experience with access to native APIs and a rich frontend ecosystem for canvas/DAG work.
+- **The CLI and the desktop app share the same Python runtime**, so behavior is consistent whether the user clicks a button or runs a command.
+
 ---
 
 ## Core Concepts
