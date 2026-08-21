@@ -44,3 +44,14 @@ def test_run_pipeline(tmp_path: Path) -> None:
     result = runner.invoke(app, ["run", str(project_dir / "pipeline.yaml")])
     assert result.exit_code == 0
     assert "completed successfully" in result.output
+
+
+def test_preview_stage(tmp_path: Path) -> None:
+    project_dir = tmp_path / "proj"
+    runner.invoke(app, ["init", str(project_dir)])
+    result = runner.invoke(
+        app, ["preview", str(project_dir / "pipeline.yaml"), "--stage", "source"]
+    )
+    assert result.exit_code == 0
+    assert "id" in result.output
+    assert "name" in result.output

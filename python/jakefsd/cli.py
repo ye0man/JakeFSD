@@ -12,7 +12,11 @@ from jakefsd.connectors import REGISTRY
 from jakefsd.credentials import delete_credential, get_credential, set_credential
 from jakefsd.models.manifest import Manifest, StageType
 from jakefsd.planner.simple import plan_from_intent
-from jakefsd.runtime.executor import execute_stage, run_file
+from jakefsd.runtime.executor import (
+    cwd,
+    execute_stage,
+    run_file,
+)
 from jakefsd.runtime.scheduler import LocalScheduler
 
 app = typer.Typer(help="JakeFSD — local-first IDE for data pipelines")
@@ -193,6 +197,44 @@ def run(
         raise typer.Exit(code=1)
 
     typer.echo(f"Pipeline '{result.pipeline_name}' completed successfully.")
+
+
+@app.command()
+def preview(
+    manifest_path: Path = typer.Argument(..., help="Path to pipeline.yaml"),
+    stage: str = typer.Option(..., "--stage", "-s", help="Stage id to preview"),
+    format: str = typer.Option(
+        "json",
+        "--format",
+        "-f",
+        help="Output format: json or csv",
+    ),
+    rows: int = typer.Option(
+        100,
+        "--rows",
+        "-r",
+        help="Max rows to preview",
+    ),
+) -> None:
+    """Preview the output of a single stage as JSON or CSV."""
+    if not manifest_path.exists():
+        typer.echo(f"Manifest not found: {manifest_path}", err=True)
+        raise typer.Exit(code=1)
+
+    manifest_path = manifest_path.resolve()
+    with cwd(manifest_path.parent):
+        manifest = Manifest.from_file(manifest_path)
+        result = execute_stage(manifest.project.pipeline, stage)
+
+    if not result.success or result.output is None:
+        typer.echo(f"Preview failed: {result.error}", err=True)
+        raise typer.Exit(code=1)
+
+    df = result.output.head(rows)
+    if format == "csv":
+        typer.echo(df.to_csv(index=False))
+    else:
+        typer.echo(df.to_json(orient="records", indent=2))
 
 
 @app.command()

@@ -40,6 +40,23 @@ fn run_pipeline(manifest_path: &str) -> Result<String, String> {
     run_jakefsd_cli(&["run", manifest_path])
 }
 
+#[tauri::command]
+fn preview_stage(manifest_path: &str, stage_id: &str) -> Result<String, String> {
+    run_jakefsd_cli(&[
+        "preview",
+        manifest_path,
+        "--stage",
+        stage_id,
+        "--format",
+        "json",
+    ])
+}
+
+#[tauri::command]
+fn save_manifest(path: &str, content: &str) -> Result<(), String> {
+    std::fs::write(path, content).map_err(|e| format!("failed to write manifest: {e}"))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -48,7 +65,9 @@ pub fn run() {
             greet,
             python_runtime_version,
             plan_from_intent,
-            run_pipeline
+            run_pipeline,
+            preview_stage,
+            save_manifest
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

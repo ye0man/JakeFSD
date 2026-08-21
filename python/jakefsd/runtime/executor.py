@@ -15,7 +15,8 @@ from jakefsd.models.manifest import Manifest, Pipeline, Stage
 
 
 @contextmanager
-def _cwd(path: Path) -> Generator[None, None, None]:
+def cwd(path: Path) -> Generator[None, None, None]:
+    """Temporarily change the working directory."""
     original = Path.cwd()
     os.chdir(path)
     try:
@@ -167,5 +168,5 @@ def run_file(path: Path | str, stop_on_error: bool = True, preview_rows: int = 0
     """
     path = Path(path).resolve()
     manifest = Manifest.from_file(path)
-    with _cwd(path.parent):
+    with cwd(path.parent):
         return run_manifest(manifest, stop_on_error, preview_rows)

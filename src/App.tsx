@@ -3,11 +3,14 @@ import { invoke } from "@tauri-apps/api/core";
 import * as yaml from "js-yaml";
 import "./App.css";
 import Canvas, { type Pipeline } from "./components/Canvas";
+import PreviewPane from "./components/PreviewPane";
 
 interface Message {
   role: "user" | "assistant" | "system";
   content: string;
 }
+
+const DEFAULT_MANIFEST_PATH = "pipeline.yaml";
 
 function App() {
   const [pythonVersion, setPythonVersion] = useState<string>("Checking Python runtime...");
@@ -22,6 +25,8 @@ function App() {
   const [input, setInput] = useState<string>("");
   const [isPlanning, setIsPlanning] = useState<boolean>(false);
   const [pipeline, setPipeline] = useState<Pipeline | null>(null);
+  const [manifestPath] = useState<string>(DEFAULT_MANIFEST_PATH);
+  const [manifestContent, setManifestContent] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -56,6 +61,8 @@ function App() {
       const parsed = yaml.load(plan) as { project?: { pipeline?: Pipeline } };
       if (parsed?.project?.pipeline) {
         setPipeline(parsed.project.pipeline);
+        setManifestContent(plan);
+        await invoke("save_manifest", { path: manifestPath, content: plan });
       }
     } catch (err) {
       setMessages((prev) => [
@@ -64,6 +71,27 @@ function App() {
       ]);
     } finally {
       setIsPlanning(false);
+    }
+  }
+
+  async function handleRunPipeline() {
+    if (!manifestContent) return;
+    setMessages((prev) => [
+      ...prev,
+      { role: "system", content: "Running pipeline..." },
+    ]);
+    try {
+      await invoke("save_manifest", { path: manifestPath, content: manifestContent });
+      const output = await invoke<string>("run_pipeline", { manifestPath });
+      setMessages((prev) => [
+        ...prev,
+        { role: "system", content: "Pipeline output:\n\n```\n" + output + "\n```" },
+      ]);
+    } catch (err) {
+      setMessages((prev) => [
+        ...prev,
+        { role: "system", content: `Pipeline failed: ${String(err)}` },
+      ]);
     }
   }
 
@@ -133,6 +161,11 @@ function App() {
               <button onClick={handleSend} disabled={isPlanning || !input.trim()}>
                 Send
               </button>
+              {manifestContent && (
+                <button onClick={handleRunPipeline} className="secondary">
+                  Run
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -147,9 +180,7 @@ function App() {
             )}
           </div>
         )}
-        {activeTab === "preview" && (
-          <div className="empty-state">Preview pane coming in the next update.</div>
-        )}
+        {activeTab === "preview" && <PreviewPane pipeline={pipeline} manifestPath={manifestPath} />}
       </main>
     </div>
   );
