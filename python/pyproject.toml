@@ -32,6 +32,8 @@ dependencies = [
     "litellm>=1.0",
     "keyring>=25.0",
     "croniter>=2.0",
+    "gspread>=6.0",
+    "google-auth>=2.0",
 ]
 
 [project.optional-dependencies]
