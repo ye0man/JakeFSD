@@ -19,8 +19,59 @@ on:
         default: false
 
 jobs:
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      release_id: ${{ steps.release.outputs.result }}
+    steps:
+      - name: Create or reuse release
+        id: release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tag = context.payload.inputs.version;
+            const draft = context.payload.inputs.draft === 'true';
+            const prerelease = context.payload.inputs.prerelease === 'true';
+
+            try {
+              const { data: existing } = await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag: tag,
+              });
+              console.log(`Reusing existing release ${existing.id}`);
+              return existing.id;
+            } catch (err) {
+              if (err.status !== 404) throw err;
+            }
+
+            const { data: release } = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: tag,
+              name: `JakeFSD ${tag}`,
+              body: [
+                'Installers for Windows, macOS, and Linux are attached below.',
+                '',
+                '**Note:** The desktop app requires Python 3.11+ and the `jakefsd` package installed',
+                'on your system. After installing the app, run:',
+                '',
+                '```bash',
+                'pip install "git+https://github.com/ye0man/JakeFSD.git#subdirectory=python"',
+                '```',
+              ].join('\n'),
+              draft: draft,
+              prerelease: prerelease,
+            });
+            console.log(`Created release ${release.id}`);
+            return release.id;
+
   test-python:
     name: Test Python backend
+    needs: create-release
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -41,7 +92,7 @@ jobs:
 
   build-tauri:
     name: Build Tauri app (${{ matrix.platform }})
-    needs: test-python
+    needs: [create-release, test-python]
     permissions:
       contents: write
     strategy:
@@ -90,17 +141,5 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.event.inputs.version }}
-          releaseName: 'JakeFSD ${{ github.event.inputs.version }}'
-          releaseBody: |
-            Installers for Windows, macOS, and Linux are attached below.
-
-            **Note:** The desktop app requires Python 3.11+ and the `jakefsd` package installed
-            on your system. After installing the app, run:
-
-            ```bash
-            pip install "git+https://github.com/ye0man/JakeFSD.git#subdirectory=python"
-            ```
-          releaseDraft: ${{ github.event.inputs.draft }}
-          prerelease: ${{ github.event.inputs.prerelease }}
+          releaseId: ${{ needs.create-release.outputs.release_id }}
           args: ${{ matrix.args }}
